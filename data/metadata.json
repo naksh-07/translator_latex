@@ -1,0 +1,198 @@
+{
+    "project_name": "My AI Book",
+    "total_chapters": 38,
+    "total_words": 96508,
+    "average_words_per_chapter": 2539,
+    "chapters": [
+        {
+            "filename": "01_CHAPTER_I_AN_UNEXPECTED_PARTY.txt",
+            "word_count": 5,
+            "status": "pending"
+        },
+        {
+            "filename": "02_CHAPTER_II_ROAST_MUTTON.txt",
+            "word_count": 4,
+            "status": "pending"
+        },
+        {
+            "filename": "03_CHAPTER_III_A_SHORT_REST.txt",
+            "word_count": 5,
+            "status": "pending"
+        },
+        {
+            "filename": "04_CHAPTER_IV_OVER_HILL_AND_UNDER_HILL.txt",
+            "word_count": 7,
+            "status": "pending"
+        },
+        {
+            "filename": "05_CHAPTER_V_RIDDLES_IN_THE_DARK.txt",
+            "word_count": 6,
+            "status": "pending"
+        },
+        {
+            "filename": "06_CHAPTER_VI_OUT_OF_THE_FRYINGPAN_INTO_THE_FIRE.txt",
+            "word_count": 9,
+            "status": "pending"
+        },
+        {
+            "filename": "07_CHAPTER_VII_QUEER_LODGINGS.txt",
+            "word_count": 4,
+            "status": "pending"
+        },
+        {
+            "filename": "08_CHAPTER_VIII_FLIES_AND_SPIDERS.txt",
+            "word_count": 5,
+            "status": "pending"
+        },
+        {
+            "filename": "09_CHAPTER_IX_BARRELS_OUT_OF_BOND.txt",
+            "word_count": 6,
+            "status": "pending"
+        },
+        {
+            "filename": "10_CHAPTER_X_A_WARM_WELCOME.txt",
+            "word_count": 5,
+            "status": "pending"
+        },
+        {
+            "filename": "11_CHAPTER_XI_ON_THE_DOORSTEP.txt",
+            "word_count": 5,
+            "status": "pending"
+        },
+        {
+            "filename": "12_CHAPTER_XII_INSIDE_INFORMATION.txt",
+            "word_count": 4,
+            "status": "pending"
+        },
+        {
+            "filename": "13_CHAPTER_XIII_NOT_AT_HOME.txt",
+            "word_count": 5,
+            "status": "pending"
+        },
+        {
+            "filename": "14_CHAPTER_XIV_FIRE_AND_WATER.txt",
+            "word_count": 5,
+            "status": "pending"
+        },
+        {
+            "filename": "15_CHAPTER_XV_THE_GATHERING_OF_THE_CLOUDS.txt",
+            "word_count": 7,
+            "status": "pending"
+        },
+        {
+            "filename": "16_CHAPTER_XVI_A_THIEF_IN_THE_NIGHT.txt",
+            "word_count": 7,
+            "status": "pending"
+        },
+        {
+            "filename": "17_CHAPTER_XVII_THE_CLOUDS_BURST.txt",
+            "word_count": 5,
+            "status": "pending"
+        },
+        {
+            "filename": "18_CHAPTER_XVIII_THE_RETURN_JOURNEY.txt",
+            "word_count": 5,
+            "status": "pending"
+        },
+        {
+            "filename": "19_CHAPTER_XIX_THE_LAST_STAGE.txt",
+            "word_count": 625,
+            "status": "pending"
+        },
+        {
+            "filename": "20_Chapter_I.txt",
+            "word_count": 8635,
+            "status": "pending"
+        },
+        {
+            "filename": "21_Chapter_II.txt",
+            "word_count": 5232,
+            "status": "pending"
+        },
+        {
+            "filename": "22_Chapter_III.txt",
+            "word_count": 2878,
+            "status": "pending"
+        },
+        {
+            "filename": "23_Chapter_IV.txt",
+            "word_count": 4050,
+            "status": "pending"
+        },
+        {
+            "filename": "24_Chapter_V.txt",
+            "word_count": 6964,
+            "status": "pending"
+        },
+        {
+            "filename": "25_Chapter_VI.txt",
+            "word_count": 6709,
+            "status": "pending"
+        },
+        {
+            "filename": "26_Chapter_VII.txt",
+            "word_count": 8985,
+            "status": "pending"
+        },
+        {
+            "filename": "27_Chapter_VIII.txt",
+            "word_count": 10192,
+            "status": "pending"
+        },
+        {
+            "filename": "28_Chapter_IX.txt",
+            "word_count": 5819,
+            "status": "pending"
+        },
+        {
+            "filename": "29_Chapter_X.txt",
+            "word_count": 3922,
+            "status": "pending"
+        },
+        {
+            "filename": "30_Chapter_XI.txt",
+            "word_count": 2997,
+            "status": "pending"
+        },
+        {
+            "filename": "31_Chapter_XII.txt",
+            "word_count": 7100,
+            "status": "pending"
+        },
+        {
+            "filename": "32_Chapter_XIII.txt",
+            "word_count": 3907,
+            "status": "pending"
+        },
+        {
+            "filename": "33_Chapter_XIV.txt",
+            "word_count": 3228,
+            "status": "pending"
+        },
+        {
+            "filename": "34_Chapter_XV.txt",
+            "word_count": 3357,
+            "status": "pending"
+        },
+        {
+            "filename": "35_Chapter_XVI.txt",
+            "word_count": 2152,
+            "status": "pending"
+        },
+        {
+            "filename": "36_Chapter_XVII.txt",
+            "word_count": 3938,
+            "status": "pending"
+        },
+        {
+            "filename": "37_Chapter_XVIII.txt",
+            "word_count": 2808,
+            "status": "pending"
+        },
+        {
+            "filename": "38_Chapter_XIX.txt",
+            "word_count": 2911,
+            "status": "pending"
+        }
+    ]
+}

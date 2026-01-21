@@ -1,0 +1,7 @@
+google-generativeai
+pymupdf
+markdown
+tqdm
+python-dotenv
+markdown
+weasyprint
