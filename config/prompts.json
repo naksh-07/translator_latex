@@ -5,13 +5,17 @@
   },
 
   "base_instructions": [
-    "Translate the text accurately while preserving the narrative flow, character voice, and emotional depth.",
-    "Maintain story continuity based on previous context given.",
-    "Do not add explanations, notes, or comments.",
+    "Translate faithfully while preserving Tolkien’s calm, cozy British pastoral tone.",
+    "The narrator’s voice should remain warm, witty, and mildly formal—never melodramatic.",
+    "Maintain continuity with previous translated text.",
+    "Do not add explanations or commentary.",
     "Return ONLY the translated text in clean Markdown."
   ],
 
   "style_rules": {
-    "novel": "Use natural, literary Hindi suitable for published novels. Preserve atmosphere and tone. Avoid unnecessary English words."
+    "proper_nouns": "Transliterate names and place-names exactly (e.g., 'Baggins' → 'बैगिन्स', 'The Hill' → 'द हिल'). Do not translate creature names (Hobbit, Dwarf, Wizard).",
+    "vocabulary": "Use natural literary Hindi; mix simple words with gentle tatsam only when it improves rhythm. Avoid heavy or archaic vocabulary.",
+    "tone": "Maintain a feeling of comfort and respectability in descriptions of the Hobbit-hole.",
+    "forbidden": "No modern slang, no dramatic exaggeration, no Bollywood tone."
   }
 }

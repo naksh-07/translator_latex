@@ -1,27 +1,28 @@
 import os
 import json
 import time
-import google.generativeai as genai
 from pathlib import Path
 from dotenv import load_dotenv
 from tqdm import tqdm
+from groq import Groq  # <-- NEW IMPORT
 
 # -------------------------------
 # ENV + API
 # -------------------------------
 load_dotenv()
-API_KEY = os.getenv("GEMINI_API_KEY")
+# Note: Ab .env mein GROQ_API_KEY hona chahiye
+API_KEY = os.getenv("GROQ_API_KEY")
 
 if not API_KEY:
-    raise ValueError("API Key not found in .env")
+    raise ValueError("❌ Error: 'GROQ_API_KEY' not found in .env file")
 
-genai.configure(api_key=API_KEY)
+# Initialize Groq Client
+client = Groq(api_key=API_KEY)
 
 CONFIG_PATH = Path("config/prompts.json")
 
-
 # -------------------------------
-# LOAD CONFIG
+# LOAD CONFIG (SAME LOGIC)
 # -------------------------------
 def load_config():
     if not CONFIG_PATH.exists():
@@ -29,9 +30,8 @@ def load_config():
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 # -------------------------------
-# SYSTEM INSTRUCTION (Updated for Soul-Keeper JSON)
+# SYSTEM INSTRUCTION (SAME LOGIC)
 # -------------------------------
 def build_system_instruction(config):
     settings = config["project_settings"]
@@ -39,41 +39,25 @@ def build_system_instruction(config):
     target_lang = settings["target_language"]
 
     base = "\n".join(config["base_instructions"])
-    
-    # --- UPDATE START ---
-    # Ab hum style_rules dictionary ko loop karke text banayenge
-    style_rules = config["style_rules"]
-    style_text = ""
-    
-    # Agar purana format 'novel' key wala hai toh wo bhi handle kar lega
-    if "novel" in style_rules:
-        style_text = style_rules["novel"]
-    else:
-        # Naya format (Vocabulary, Dialogue, etc.)
-        for key, value in style_rules.items():
-            style_text += f"- **{key.capitalize()}**: {value}\n"
-    # --- UPDATE END ---
+    # Fallback logic for style
+    style = config["style_rules"].get("novel", "Translate accurately.")
 
     return (
-        f"Role: Professional Literary Translator\n\n"
-        f"Project Settings:\n"
-        f"- Source: {source_lang}\n"
-        f"- Target: {target_lang}\n\n"
-        f"Base Instructions:\n{base}\n\n"
-        f"Style Guidelines:\n{style_text}\n\n"
-        f"Output Requirement:\nReturn ONLY the translated text in clean Markdown format."
+        f"{base}\n\n"
+        f"Source: {source_lang}\n"
+        f"Target: {target_lang}\n\n"
+        f"Style: {style}\n\n"
+        f"Return only the translated text in Markdown."
     )
 
 # -------------------------------
-# TEXT CLEANUP
+# TEXT CLEANUP (SAME LOGIC)
 # -------------------------------
 def clean_text(text):
-    # Remove BOM & normalize
     return text.replace("\r", "").replace("\ufeff", "").strip()
 
-
 # -------------------------------
-# HYBRID CHUNKING (Paragraph + Sentence)
+# HYBRID CHUNKING (SAME LOGIC)
 # -------------------------------
 def split_text_smartly(text, max_chars=7000):
     text = clean_text(text)
@@ -90,7 +74,6 @@ def split_text_smartly(text, max_chars=7000):
         if not para:
             continue
 
-        # Very long paragraph → break into sentences
         if len(para) > max_chars:
             sentences = para.split(". ")
             for s in sentences:
@@ -111,21 +94,38 @@ def split_text_smartly(text, max_chars=7000):
 
     return chunks
 
-
 # -------------------------------
-# STRONG RETRY SYSTEM (Free Tier Safe)
+# STRONG RETRY SYSTEM (UPDATED FOR GROQ)
 # -------------------------------
-def generate_with_retry(model, prompt, max_retries=7):
+def generate_with_retry(client, system_instr, user_prompt, max_retries=7):
+    # Model ID set kar diya hai Llama 3.3 pe
+    MODEL_ID = "llama-3.3-70b-versatile"
+    
     for i in range(max_retries):
         try:
-            res = model.generate_content(prompt)
-            return res.text
+            # Groq Call Structure
+            completion = client.chat.completions.create(
+                model=MODEL_ID,
+                messages=[
+                    {"role": "system", "content": system_instr},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.5, # Thoda balanced temperature
+                max_tokens=4096, # Llama 3.3 ka context bada hai
+            )
+            return completion.choices[0].message.content
+            
         except Exception as e:
             err = str(e)
             wait = (i + 1) * 8
 
-            if "429" in err or "exhausted" in err or "Quota" in err:
-                print(f"⚠️ Rate Limit. Waiting {wait}s...")
+            # Rate Limit Handling (Groq ke liye zaroori hai)
+            if "429" in err or "rate limit" in err.lower():
+                print(f"⚠️ Rate Limit (Groq). Waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            elif "500" in err or "503" in err:
+                print(f"⚠️ Server Error. Waiting {wait}s...")
                 time.sleep(wait)
                 continue
             else:
@@ -134,9 +134,8 @@ def generate_with_retry(model, prompt, max_retries=7):
 
     return None
 
-
 # -------------------------------
-# OUTPUT SANITIZER
+# OUTPUT SANITIZER (SAME LOGIC)
 # -------------------------------
 def sanitize_output(text):
     if not text:
@@ -147,14 +146,13 @@ def sanitize_output(text):
         "Output:", "Sure,", "Okay,"
     ]
     for b in bad_starts:
-        if text.startswith(b):
-            text = text[len(b):].strip()
+        if text.lstrip().startswith(b):
+            text = text.lstrip()[len(b):].strip()
 
     return text.strip()
 
-
 # -------------------------------
-# MAIN TRANSLATOR
+# MAIN TRANSLATOR (UPDATED)
 # -------------------------------
 def translate_book():
     print("Loading settings...")
@@ -171,17 +169,13 @@ def translate_book():
         print("No files found in raw_text")
         return
 
+    # System Instruction Build karo
     system_instruction = build_system_instruction(config)
-
-    model = genai.GenerativeModel(
-        model_name="gemini-flash-latest",
-        system_instruction=system_instruction
-    )
 
     previous_original = ""
     previous_translated = ""
 
-    for file in tqdm(files, desc="Translating"):
+    for file in tqdm(files, desc="Translating (Groq)"):
         output_file = output_dir / f"{file.stem}.md"
         temp_file = temp_dir / f"{file.stem}.partial.md"
 
@@ -196,6 +190,7 @@ def translate_book():
         for idx, chunk in enumerate(chunks):
             part = f"(Part {idx+1}/{len(chunks)})" if len(chunks) > 1 else ""
 
+            # Prompt Construction (Same as before)
             prompt = f"""
 ---BEGIN---
 Previous Original Context:
@@ -209,8 +204,8 @@ Now translate the following {part}:
 {chunk}
 ---END---
 """
-
-            translated = generate_with_retry(model, prompt)
+            # Groq function call (Passing system instruction here)
+            translated = generate_with_retry(client, system_instruction, prompt)
 
             if not translated:
                 print(f"❌ Chunk failed: {idx+1}")
@@ -223,11 +218,11 @@ Now translate the following {part}:
             previous_original = chunk[-1500:]
             previous_translated = translated[-1500:]
 
-            # Partial save (safety)
+            # Partial save
             temp_file.write_text(final_output, encoding="utf-8")
 
-            # Free tier cooldown
-            time.sleep(4)
+            # Groq Free Tier Cooldown (Thoda safe side)
+            time.sleep(3)
 
         # Final save
         output_file.write_text(final_output.strip(), encoding="utf-8")

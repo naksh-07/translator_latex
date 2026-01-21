@@ -31,7 +31,7 @@ def load_config():
 
 
 # -------------------------------
-# SYSTEM INSTRUCTION (Updated for Soul-Keeper JSON)
+# SYSTEM INSTRUCTION (Compact)
 # -------------------------------
 def build_system_instruction(config):
     settings = config["project_settings"]
@@ -39,30 +39,16 @@ def build_system_instruction(config):
     target_lang = settings["target_language"]
 
     base = "\n".join(config["base_instructions"])
-    
-    # --- UPDATE START ---
-    # Ab hum style_rules dictionary ko loop karke text banayenge
-    style_rules = config["style_rules"]
-    style_text = ""
-    
-    # Agar purana format 'novel' key wala hai toh wo bhi handle kar lega
-    if "novel" in style_rules:
-        style_text = style_rules["novel"]
-    else:
-        # Naya format (Vocabulary, Dialogue, etc.)
-        for key, value in style_rules.items():
-            style_text += f"- **{key.capitalize()}**: {value}\n"
-    # --- UPDATE END ---
+    style = config["style_rules"]["novel"]
 
     return (
-        f"Role: Professional Literary Translator\n\n"
-        f"Project Settings:\n"
-        f"- Source: {source_lang}\n"
-        f"- Target: {target_lang}\n\n"
-        f"Base Instructions:\n{base}\n\n"
-        f"Style Guidelines:\n{style_text}\n\n"
-        f"Output Requirement:\nReturn ONLY the translated text in clean Markdown format."
+        f"{base}\n\n"
+        f"Source: {source_lang}\n"
+        f"Target: {target_lang}\n\n"
+        f"Style: {style}\n\n"
+        f"Return only the translated text in Markdown."
     )
+
 
 # -------------------------------
 # TEXT CLEANUP
@@ -174,7 +160,7 @@ def translate_book():
     system_instruction = build_system_instruction(config)
 
     model = genai.GenerativeModel(
-        model_name="gemini-flash-latest",
+        model_name="gemini-2.5-flash",
         system_instruction=system_instruction
     )
 
