@@ -1,15 +1,20 @@
 import fitz  # PyMuPDF
 import re
-import json  # <--- YE MISSING THA (JSON banane ke liye zaroori hai)
+import json
+import shutil  # Folder saaf karne ke liye
 from pathlib import Path
 
 def clean_and_extract(pdf_path, output_dir):
     """
-    Ye function PDF se text nikalta hai, headers/footers hatata hai, 
-    aur Chapters me divide karta hai.
+    Ab ye function 'Smart' hai. Ye nakli/chote chapters ko ignore karega.
     """
     print(f"📂 Processing: {pdf_path}")
     
+    # 0. Safai Abhiyan (Purana kachra saaf karo)
+    if output_dir.exists():
+        shutil.rmtree(output_dir) # Purana folder delete
+    output_dir.mkdir(parents=True, exist_ok=True) # Naya banao
+
     # 1. PDF Load karo
     doc = fitz.open(pdf_path)
     full_text = ""
@@ -18,11 +23,11 @@ def clean_and_extract(pdf_path, output_dir):
     for page in doc:
         text = page.get_text("text")
         
-        # --- DESI JUGAD FOR CLEANING ---
+        # --- CLEANING ---
         lines = text.split('\n')
         cleaned_lines = []
         for line in lines:
-            # Page numbers filter (Basic logic)
+            # Page numbers filter
             if len(line.strip()) < 4 and line.strip().isdigit():
                 continue 
             cleaned_lines.append(line)
@@ -33,44 +38,46 @@ def clean_and_extract(pdf_path, output_dir):
     pattern = r"^(?:Chapter|CHAPTER|अध्याय|Section)\s+(?:\d+|[IVX]+).*"
     matches = list(re.finditer(pattern, full_text, flags=re.MULTILINE))
 
-    # Agar koi Chapter heading nahi mili
     if not matches:
         print("⚠️ Koi Chapter headings nahi mili! Puri book ek file me save hogi.")
-        output_dir.mkdir(parents=True, exist_ok=True)
         (output_dir / "full_book.txt").write_text(full_text, encoding="utf-8")
         return
 
-    print(f"🔥 Found {len(matches)} Chapters! Splitting now...")
+    print(f"🔥 Found {len(matches)} Potential Chapters. Filtering junk now...")
     
-    output_dir.mkdir(parents=True, exist_ok=True)
+    valid_chapter_count = 0  # Isse count karenge asli chapters
     
     for i, match in enumerate(matches):
         start = match.start()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(full_text)
         
-        chapter_title = match.group().strip().replace(" ", "_").replace(":", "")
-        # Filename safe banao
-        safe_filename = "".join([c for c in chapter_title if c.isalnum() or c in "_"])
-        
         chapter_content = full_text[start:end]
         
-        # File save (01_Chapter_1.txt format)
-        file_path = output_dir / f"{i+1:02d}_{safe_filename}.txt"
+        # --- 🚧 THE BOUNCER LOGIC (Game Changer) 🚧 ---
+        # Agar chapter me 100 words se kam hain, toh wo Chapter nahi hai (TOC/Header hai)
+        word_count = len(chapter_content.split())
+        if word_count < 100:
+            print(f"🗑️ Skipped Junk/Header: {match.group().strip()} (Only {word_count} words)")
+            continue
+
+        # Agar pass ho gaya, toh save karo
+        valid_chapter_count += 1
+        
+        chapter_title = match.group().strip().replace(" ", "_").replace(":", "")
+        safe_filename = "".join([c for c in chapter_title if c.isalnum() or c in "_"])
+        
+        # Filename me 'valid_chapter_count' use karenge taaki sequence (01, 02) na tute
+        file_path = output_dir / f"{valid_chapter_count:02d}_{safe_filename}.txt"
         file_path.write_text(chapter_content, encoding="utf-8")
-        print(f"✅ Saved: {file_path.name}")
+        print(f"✅ Saved: {file_path.name} ({word_count} words)")
 
 def generate_metadata(raw_text_dir, output_file="data/metadata.json"):
-    """
-    Chapters count karega aur ek JSON report banayega.
-    """
     print("\n📊 Generating Metadata report...")
     raw_path = Path(raw_text_dir)
-    
-    # Saari text files dhundo
     files = sorted(list(raw_path.glob("*.txt")))
     
     if not files:
-        print("⚠️  Koi files nahi mili metadata ke liye!")
+        print("⚠️ Koi files nahi mili!")
         return
 
     total_words = 0
@@ -80,12 +87,7 @@ def generate_metadata(raw_text_dir, output_file="data/metadata.json"):
         text = f.read_text(encoding="utf-8")
         word_count = len(text.split())
         total_words += word_count
-        
-        chapters_info.append({
-            "filename": f.name,
-            "word_count": word_count,
-            "status": "pending"
-        })
+        chapters_info.append({"filename": f.name, "word_count": word_count, "status": "pending"})
 
     metadata = {
         "project_name": "My AI Book",
@@ -95,26 +97,15 @@ def generate_metadata(raw_text_dir, output_file="data/metadata.json"):
         "chapters": chapters_info
     }
 
-    # JSON file save karo
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4)
-    
-    print(f"✅ Metadata saved to {output_file}! Total Words: {total_words}")
+    print(f"✅ Metadata saved! Total Real Chapters: {len(files)}")
 
-# --- EXECUTION AREA ---
 if __name__ == "__main__":
-    # 1. Setup Paths
-    pdf_file = "data/input_pdfs/sample.pdf"
+    pdf_file = "data/input_pdfs/The Hobbt.pdf"
     out_path = Path("data/raw_text")
-    
-    # 2. Check File
     if Path(pdf_file).exists():
-        # Step A: Clean & Extract
         clean_and_extract(pdf_file, out_path)
-        
-        # Step B: Generate Stats (Ye ab chalega!)
         generate_metadata(out_path)
-        
-        print("\n🚀 Extraction Complete! Ab Translator.py chalao.")
     else:
-        print(f"❌ Bhai, '{pdf_file}' nahi mili. 'data/input_pdfs' me PDF daal pehle!")
+        print("❌ PDF Missing!")

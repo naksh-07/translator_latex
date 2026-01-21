@@ -19,114 +19,146 @@ genai.configure(api_key=API_KEY)
 CONFIG_PATH = Path("config/prompts.json")
 
 def load_config():
-    """JSON se settings load karta hai"""
     if not CONFIG_PATH.exists():
         raise FileNotFoundError(f"❌ Config file nahi mili: {CONFIG_PATH}")
-    
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
 def build_system_instruction(config):
-    """
-    Ye function 'Lego Blocks' jod kar final prompt banata hai.
-    """
     settings = config["project_settings"]
-    
-    # 1. Base Rules (Jo hamesha same rahenge)
     base = "\n".join(config["base_instructions"])
-    
-    # 2. Dynamic Rules (JSON se uthaye hue)
     source_lang = settings["source_language"]
     target_lang = settings["target_language"]
-    
     genre_rule = config["genres"].get(settings["selected_genre"], "")
     vibe_rule = config["vibes"].get(settings["selected_vibe"], "")
 
-    # 3. Final Assembly
-    instruction = f"""
+    return f"""
     {base}
-    
     --- PROJECT SETTINGS ---
-    Source Language: {source_lang}
-    Target Language: {target_lang}
-    
-    --- SPECIFIC INSTRUCTIONS ---
-    GENRE ({settings['selected_genre']}): 
-    {genre_rule}
-    
-    VIBE/TONE ({settings['selected_vibe']}): 
-    {vibe_rule}
-    
+    Source: {source_lang} | Target: {target_lang}
+    --- STYLE GUIDE ---
+    GENRE: {genre_rule}
+    VIBE: {vibe_rule}
     --- CRITICAL RULE ---
-    Translate from {source_lang} to {target_lang} strictly adhering to the VIBE defined above.
+    Translate strictly adhering to the VIBE. Output ONLY the translated text in Markdown.
     """
-    return instruction
+
+# --- 🧠 SMART CHUNKING LOGIC ---
+def split_text_smartly(text, max_chars=10000):
+    """
+    Agar chapter bahut bada hai, toh usse paragraphs me todta hai.
+    Taaki Output Token Limit hit na ho.
+    """
+    if len(text) < max_chars:
+        return [text]
+    
+    print(f"   ✂️  Chapter too big ({len(text)} chars). Splitting into chunks...")
+    chunks = []
+    current_chunk = []
+    current_length = 0
+    
+    # Paragraphs pe split karo taaki sentence na tute
+    paragraphs = text.split('\n')
+    
+    for para in paragraphs:
+        # +2 for newline characters
+        if current_length + len(para) + 2 > max_chars:
+            chunks.append("\n".join(current_chunk))
+            current_chunk = [para]
+            current_length = len(para)
+        else:
+            current_chunk.append(para)
+            current_length += len(para) + 2
+            
+    if current_chunk:
+        chunks.append("\n".join(current_chunk))
+        
+    return chunks
+
+# --- 🔁 RETRY LOGIC ---
+def generate_with_retry(model, prompt, retries=3):
+    """
+    Agar API fail ho (Rate Limit), toh wait karke retry karega.
+    """
+    for i in range(retries):
+        try:
+            response = model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            if "429" in str(e) or "Resource has been exhausted" in str(e):
+                wait_time = (i + 1) * 10  # 10s, 20s, 30s wait
+                print(f"   ⚠️  Rate Limit Hit! Cooling down for {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"   ❌  Error: {e}")
+                return None # Skip this chunk if error is weird
+    return None
 
 def translate_book():
-    # Load configuration
     print("⚙️ Loading configuration...")
     config = load_config()
     
-    # Paths setup
     input_dir = Path("data/raw_text")
     output_dir = Path("data/output_books")
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Files gather karna
     files = sorted(list(input_dir.glob("*.txt")))
     if not files:
-        print("⚠️ Koi text files nahi mili 'data/raw_text' me. Pehle extraction run kar!")
+        print("⚠️ Koi text files nahi mili 'data/raw_text' me.")
         return
 
-    # Build the Brain (Prompt)
     system_instruction = build_system_instruction(config)
-    print(f"\n🧠 AI Instructions Built:\nStyle: {config['project_settings']['selected_vibe']}\nTarget: {config['project_settings']['target_language']}\n")
-
-    # Initialize Model (gemini-flash-latest for speed)
+    
+    # Model Setup (Flash 1.5 is best for this)
     model = genai.GenerativeModel(
-        model_name="gemini-flash-latest",
+        model_name="gemini-2.5-flash", 
         system_instruction=system_instruction
     )
 
     last_context = "Start of the book."
     
-    # The Loop
-    for file in tqdm(files, desc="Translating..."):
+    for file in tqdm(files, desc="Translating Chapters"):
         output_file = output_dir / f"{file.stem}_translated.md"
         
-        # Resume capability
         if output_file.exists():
             continue
 
         raw_text = file.read_text(encoding="utf-8")
         
-        # User Prompt (Dynamic content + Context)
-        user_prompt = f"""
-        PREVIOUS CONTEXT:
-        {last_context}
+        # 1. Text ko Chunks me todo (Agar zaroorat ho)
+        text_chunks = split_text_smartly(raw_text)
+        final_translated_text = ""
         
-        ---
-        TEXT TO TRANSLATE:
-        {raw_text}
-        """
+        for index, chunk in enumerate(text_chunks):
+            # Context me batao ki ye kaunsa part hai
+            part_info = f"(Part {index+1}/{len(text_chunks)})" if len(text_chunks) > 1 else ""
+            
+            user_prompt = f"""
+            PREVIOUS CONTEXT (Story so far):
+            {last_context}
+            
+            ---
+            TEXT TO TRANSLATE {part_info}:
+            {chunk}
+            """
+            
+            # 2. Call API with Retry
+            translated_chunk = generate_with_retry(model, user_prompt)
+            
+            if translated_chunk:
+                final_translated_text += translated_chunk + "\n\n"
+                # Context update (Last 1000 chars)
+                last_context = translated_chunk[-1000:]
+            else:
+                print(f"❌ Failed to translate chunk {index+1} of {file.name}")
+            
+            # 3. Rate Limit Sleep (Free tier safety)
+            # Har chunk ke baad 5 second ruko.
+            time.sleep(5) 
 
-        try:
-            # AI Call
-            response = model.generate_content(user_prompt)
-            translated_text = response.text
-            
-            # Save
-            output_file.write_text(translated_text, encoding="utf-8")
-            
-            # Context Update (Simple Logic)
-            last_context = translated_text[-800:]
-            
-            # Rate Limit Protection
-            time.sleep(4) 
-
-        except Exception as e:
-            print(f"❌ Error in {file.name}: {e}")
-            time.sleep(10) # Error aane pe thoda lamba break
+        # Save Final Chapter
+        if final_translated_text:
+            output_file.write_text(final_translated_text, encoding="utf-8")
 
     print(f"\n✅ Translation Complete! Files saved in: {output_dir}")
 
